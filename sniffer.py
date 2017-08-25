@@ -70,8 +70,8 @@ def parse_packet(packet):
 
         ttl = iph[5]
         protocol = iph[6]
-        s_addr = socket.inet_ntoa(iph[8]);
-        d_addr = socket.inet_ntoa(iph[9]);
+        s_addr = socket.inet_ntoa(iph[8])
+        d_addr = socket.inet_ntoa(iph[9])
 
         print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(
             ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(
