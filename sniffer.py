@@ -13,9 +13,10 @@ def main(argv):
         cmd_opts = "pc" # packets, catch
         opts, args = getopt.getopt(argv[1:], cmd_opts)
         for opt in opts:
-            if opt[0] == 'p':
+            global CATCH_MODE
+            if opt[0] == '-p':
                 CATCH_MODE = True
-            if opt[0] == 'c':
+            if opt[0] == '-c':
                 CATCH_MODE = False
     except getopt.GetoptError:
         pass
@@ -52,7 +53,8 @@ def eth_addr(a):
 # function to parse a packet
 def parse_packet(packet):
     # init:
-    bad_ports = [23, 3389, 4899, 80, 443, 53]   # telnet, STD RDP, Radmin, Teamviewer
+    # telnet 23, STD RDP 3389, Radmin 4899, Teamviewer 80 443 53, ammyy 443
+    bad_ports = [23, 3389, 4899, 80, 443, 53]
     bad_words_data = ['teamviewer', 'rdp', 'RDP', 'viewer', 'TEAMVIEWER', 'radmin',
                       'ammyyadmin', 'ammyy', 'telnet']
     #print '*********************************'
