@@ -1,3 +1,4 @@
+import getopt
 import socket
 from struct import *
 import datetime
@@ -5,7 +6,20 @@ import pcapy
 import sys
 from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
 
+CATCH_MODE = False
+
 def main(argv):
+    try:
+        cmd_opts = "pc" # packets, catch
+        opts, args = getopt.getopt(argv[1:], cmd_opts)
+        for opt in opts:
+            if opt[0] == 'p':
+                CATCH_MODE = True
+            if opt[0] == 'c':
+                CATCH_MODE = False
+    except getopt.GetoptError:
+        pass
+
     # list all devices
     devices = pcapy.findalldevs()
     print devices
@@ -19,18 +33,11 @@ def main(argv):
 
     print "Sniffing device " + dev
 
-    '''
-    open device
-    # Arguments here are:
-    #   device
-    #   snaplen (maximum number of bytes to capture _per_packet_)
-    #   promiscious mode (1 for true)
-    #   timeout (in milliseconds)
-    '''
     cap = pcapy.open_live(dev, 65536, 1, 0)
 
     # start sniffing packets
     while (1):
+    #for i in range(10):
         (header, packet) = cap.next()
         # print ('%s: captured %d bytes, truncated to %d bytes' %(datetime.datetime.now(), header.getlen(), header.getcaplen()))
         parse_packet(packet)
@@ -44,14 +51,21 @@ def eth_addr(a):
 
 # function to parse a packet
 def parse_packet(packet):
+    # init:
+    bad_ports = [23, 3389, 4899, 80, 443, 53]   # telnet, STD RDP, Radmin, Teamviewer
+    bad_words_data = ['teamviewer', 'rdp', 'RDP', 'viewer', 'TEAMVIEWER', 'radmin',
+                      'ammyyadmin', 'ammyy', 'telnet']
+    #print '*********************************'
     # parse ethernet header
     eth_length = 14
 
     eth_header = packet[:eth_length]
     eth = unpack('!6s6sH', eth_header)
+    # print 'UNPACKING RAW ETH_HEADER: ' + str(eth)   # unpacking
+
     eth_protocol = socket.ntohs(eth[2])
-    print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
-        packet[6:12]) + ' Protocol : ' + str(eth_protocol)
+    #print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
+        #packet[6:12]) + ' Protocol : ' + str(eth_protocol)
 
     # Parse IP packets, IP Protocol number = 8
     if eth_protocol == 8:
@@ -72,10 +86,10 @@ def parse_packet(packet):
         protocol = iph[6]
         s_addr = socket.inet_ntoa(iph[8])
         d_addr = socket.inet_ntoa(iph[9])
-
-        print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(
-            ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(
-            s_addr) + ' Destination Address : ' + str(d_addr)
+        if CATCH_MODE:
+            print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + \
+                  ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + \
+                  str(s_addr) + ' Destination Address : ' + str(d_addr)
 
         # TCP protocol
         if protocol == 6:
@@ -91,17 +105,25 @@ def parse_packet(packet):
             acknowledgement = tcph[3]
             doff_reserved = tcph[4]
             tcph_length = doff_reserved >> 4
-
-            print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(
-                sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
+            if CATCH_MODE:
+                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(
+                    sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
+            else:
+                if dest_port in bad_ports:
+                    print 'Attention! Detected connect to ' + str(dest_port)
 
             h_size = eth_length + iph_length + tcph_length * 4
             data_size = len(packet) - h_size
 
             # get data from the packet
             data = packet[h_size:]
-
-            print EthDecoder().decode(data)
+            decode_data = EthDecoder().decode(data).get_data_as_string()
+            if CATCH_MODE:
+                print decode_data
+            else:
+                for item in bad_words_data:
+                    if item in decode_data:
+                        print 'Attention! Detected connect with word: ' + item
 
         # ICMP Packets
         elif protocol == 1:
@@ -140,8 +162,12 @@ def parse_packet(packet):
             length = udph[2]
             checksum = udph[3]
 
-            print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Length : ' + str(
-                length) + ' Checksum : ' + str(checksum)
+            if CATCH_MODE:
+                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Length : ' + str(
+                    length) + ' Checksum : ' + str(checksum)
+            else:
+                if dest_port in bad_ports:
+                    print 'Attention! Detected connect to ' + str(dest_port)
 
             h_size = eth_length + iph_length + udph_length
             data_size = len(packet) - h_size
@@ -149,13 +175,19 @@ def parse_packet(packet):
             # get data from the packet
             data = packet[h_size:]
 
-            print 'Data : ' + data
+            if CATCH_MODE:
+                print 'Data : ' + data
+            else:
+                for item in bad_words_data:
+                    if item in data:
+                        print 'Attention! Detected connect with word: ' + item
+
 
         # some other IP packet like IGMP
         else:
             print 'Protocol other than TCP/UDP/ICMP'
 
-        print
+        #print
 
 
 if __name__ == "__main__":
