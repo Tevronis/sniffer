@@ -98,7 +98,7 @@ def parse_packet(packet):
             t = iph_length + eth_length
             tcp_header = packet[t:t + 20]
 
-            # now unpack them :)
+            # now unpack them
             tcph = unpack('!HHLLBBHHH', tcp_header)
 
             source_port = tcph[0]
@@ -108,7 +108,7 @@ def parse_packet(packet):
             doff_reserved = tcph[4]
             tcph_length = doff_reserved >> 4
             if CATCH_MODE:
-                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(
+                print 'Protocol: TCP ' + 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(
                     sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
             else:
                 if dest_port in bad_ports:
@@ -140,7 +140,8 @@ def parse_packet(packet):
             code = icmph[1]
             checksum = icmph[2]
 
-            print 'Type : ' + str(icmp_type) + ' Code : ' + str(code) + ' Checksum : ' + str(checksum)
+            print 'Protocol: ICMP ' + 'Type : ' + str(icmp_type) + \
+                  ' Code : ' + str(code) + ' Checksum : ' + str(checksum)
 
             h_size = eth_length + iph_length + icmph_length
             data_size = len(packet) - h_size
@@ -165,7 +166,8 @@ def parse_packet(packet):
             checksum = udph[3]
 
             if CATCH_MODE:
-                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Length : ' + str(
+                print 'Protocol: UDP ' + 'Source Port : ' + \
+                      str(source_port) + ' Dest Port : ' + str(dest_port) + ' Length : ' + str(
                     length) + ' Checksum : ' + str(checksum)
             else:
                 if dest_port in bad_ports:
