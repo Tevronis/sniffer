@@ -25,7 +25,6 @@ def main(argv):
     devices = pcapy.findalldevs()
     print devices
 
-    # ask user to enter device name to sniff
     print "Available devices are :"
     for d in devices:
         print d
@@ -34,13 +33,11 @@ def main(argv):
 
     print "Sniffing device " + dev
 
-    cap = pcapy.open_live(dev, 65536, 1, 0)
+    cap = pcapy.open_live(dev, 65536 * 8, 0, 0)
 
     # start sniffing packets
     while (1):
-    #for i in range(10):
         (header, packet) = cap.next()
-        # print ('%s: captured %d bytes, truncated to %d bytes' %(datetime.datetime.now(), header.getlen(), header.getcaplen()))
         parse_packet(packet)
 
 
@@ -53,11 +50,11 @@ def eth_addr(a):
 # function to parse a packet
 def parse_packet(packet):
     # init:
-    # telnet 23, STD RDP 3389, Radmin 4899, Teamviewer 80 443 53, ammyy 443
-    bad_ports = [23, 3389, 4899, 80, 443, 53]
+    # telnet 23, STD RDP 3389, Radmin 4899, Teamviewer 80 443 53, ammyy 443 1255 5931
+    bad_ports = [23, 3389, 4899, 80, 443, 53, 1255, 5931]
     bad_words_data = ['teamviewer', 'rdp', 'RDP', 'viewer', 'TEAMVIEWER', 'radmin',
                       'ammyyadmin', 'ammyy', 'telnet']
-    #print '*********************************'
+
     # parse ethernet header
     eth_length = 14
 
@@ -98,7 +95,6 @@ def parse_packet(packet):
             t = iph_length + eth_length
             tcp_header = packet[t:t + 20]
 
-            # now unpack them
             tcph = unpack('!HHLLBBHHH', tcp_header)
 
             source_port = tcph[0]
@@ -112,7 +108,7 @@ def parse_packet(packet):
                     sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
             else:
                 if dest_port in bad_ports:
-                    print 'Attention! Detected connect to ' + str(dest_port)
+                    print 'Attention! Detected connect to ' + str(dest_port) + ' from ' + str(s_addr)
 
             h_size = eth_length + iph_length + tcph_length * 4
             data_size = len(packet) - h_size
@@ -125,7 +121,7 @@ def parse_packet(packet):
             else:
                 for item in bad_words_data:
                     if item in decode_data:
-                        print 'Attention! Detected connect with word: ' + item
+                        print 'Attention! Detected connect with word: ' + item + ' from ' + str(s_addr)
 
         # ICMP Packets
         elif protocol == 1:
@@ -171,7 +167,7 @@ def parse_packet(packet):
                     length) + ' Checksum : ' + str(checksum)
             else:
                 if dest_port in bad_ports:
-                    print 'Attention! Detected connect to ' + str(dest_port)
+                    print 'Attention! Detected connect to ' + str(dest_port) + ' from ' + str(s_addr)
 
             h_size = eth_length + iph_length + udph_length
             data_size = len(packet) - h_size
@@ -184,7 +180,7 @@ def parse_packet(packet):
             else:
                 for item in bad_words_data:
                     if item in data:
-                        print 'Attention! Detected connect with word: ' + item
+                        print 'Attention! Detected connect with word: ' + item + ' from ' + str(s_addr)
 
 
         # some other IP packet like IGMP
