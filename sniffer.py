@@ -7,17 +7,26 @@ import sys
 from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
 
 CATCH_MODE = False
+PROMISC_MODE = False
+
 
 def main(argv):
     try:
-        cmd_opts = "pc" # packets, catch
+        cmd_opts = "pchn"  # packets, catch, help, promisc
         opts, args = getopt.getopt(argv[1:], cmd_opts)
         for opt in opts:
             global CATCH_MODE
+            global PROMISC_MODE
             if opt[0] == '-p':
                 CATCH_MODE = True
             if opt[0] == '-c':
                 CATCH_MODE = False
+            if opt[0] == '-n':
+                PROMISC_MODE = True
+            if opt[0] == '-h':
+                print "-p - capture the packets \n" \
+                      "-c - detect RPD \n" \
+                      "-n - set promisc mode"
     except getopt.GetoptError:
         pass
 
@@ -33,7 +42,7 @@ def main(argv):
 
     print "Sniffing device " + dev
 
-    cap = pcapy.open_live(dev, 65536 * 8, 0, 0)
+    cap = pcapy.open_live(dev, 65536 * 8, PROMISC_MODE, 0)
 
     # start sniffing packets
     while (1):
@@ -63,8 +72,8 @@ def parse_packet(packet):
     # print 'UNPACKING RAW ETH_HEADER: ' + str(eth)   # unpacking
 
     eth_protocol = socket.ntohs(eth[2])
-    #print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
-        #packet[6:12]) + ' Protocol : ' + str(eth_protocol)
+    # print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
+    # packet[6:12]) + ' Protocol : ' + str(eth_protocol)
 
     # Parse IP packets, IP Protocol number = 8
     if eth_protocol == 8:
@@ -104,8 +113,10 @@ def parse_packet(packet):
             doff_reserved = tcph[4]
             tcph_length = doff_reserved >> 4
             if CATCH_MODE:
-                print 'Protocol: TCP ' + 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(
-                    sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
+                print 'Protocol: TCP ' + 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(
+                    dest_port) + ' Sequence Number : ' + str(
+                    sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(
+                    tcph_length)
             else:
                 if dest_port in bad_ports:
                     print 'Attention! Detected connect to ' + str(dest_port) + ' from ' + str(s_addr)
@@ -172,7 +183,6 @@ def parse_packet(packet):
             h_size = eth_length + iph_length + udph_length
             data_size = len(packet) - h_size
 
-            # get data from the packet
             data = packet[h_size:]
 
             if CATCH_MODE:
@@ -186,8 +196,6 @@ def parse_packet(packet):
         # some other IP packet like IGMP
         else:
             print 'Protocol other than TCP/UDP/ICMP'
-
-        #print
 
 
 if __name__ == "__main__":
