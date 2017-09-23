@@ -1,4 +1,5 @@
 # sniffer
+- Python 2.7
 
 How to run:
 atributes flags: 
