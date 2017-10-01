@@ -1,3 +1,4 @@
+# coding=utf-8
 import getopt
 import socket
 from struct import *
@@ -24,9 +25,9 @@ def main(argv):
             if opt[0] == '-n':
                 PROMISC_MODE = True
             if opt[0] == '-h':
-                print "-p - capture the packets \n" \
-                      "-c - detect RPD \n" \
-                      "-n - set promisc mode"
+                print "-p - перехват пакетов \n" \
+                      "-c - распознавание протоколов RPD \n" \
+                      "-n - неразборчивый режим"
     except getopt.GetoptError:
         pass
 
@@ -34,13 +35,13 @@ def main(argv):
     devices = pcapy.findalldevs()
     print devices
 
-    print "Available devices are :"
+    print "Доступные устройства:"
     for d in devices:
         print d
 
-    dev = raw_input("Enter device name to sniff : ")
+    dev = raw_input("Введите название устройства: ")
 
-    print "Sniffing device " + dev
+    print "Сканируемое устройство: " + dev
 
     cap = pcapy.open_live(dev, 65536 * 8, PROMISC_MODE, 0)
 
@@ -95,9 +96,9 @@ def parse_packet(packet):
         s_addr = socket.inet_ntoa(iph[8])
         d_addr = socket.inet_ntoa(iph[9])
         if CATCH_MODE:
-            print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + \
-                  ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + \
-                  str(s_addr) + ' Destination Address : ' + str(d_addr)
+            print 'Версия : ' + str(version) + ' Длинна IP заголовка : ' + str(ihl) + \
+                  ' TTL : ' + str(ttl) + ' Протокол : ' + str(protocol) + ' Адресс отправения : ' + \
+                  str(s_addr) + ' Адресс доставки : ' + str(d_addr)
 
         # TCP protocol
         if protocol == 6:
@@ -113,13 +114,13 @@ def parse_packet(packet):
             doff_reserved = tcph[4]
             tcph_length = doff_reserved >> 4
             if CATCH_MODE:
-                print 'Protocol: TCP ' + 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(
-                    dest_port) + ' Sequence Number : ' + str(
-                    sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(
+                print 'Протокол: TCP ' + 'Исходный порт : ' + str(source_port) + ' Порт назначения : ' + str(
+                    dest_port) + ' Порядковый номер : ' + str(
+                    sequence) + ' Подтверждение : ' + str(acknowledgement) + ' Длина TCP заголовка : ' + str(
                     tcph_length)
             else:
                 if dest_port in bad_ports:
-                    print 'Attention! Detected connect to ' + str(dest_port) + ' from ' + str(s_addr)
+                    print 'Замечено подключение на порт ' + str(dest_port) + ' с адресса ' + str(s_addr)
 
             h_size = eth_length + iph_length + tcph_length * 4
             data_size = len(packet) - h_size
@@ -132,7 +133,7 @@ def parse_packet(packet):
             else:
                 for item in bad_words_data:
                     if item in decode_data:
-                        print 'Attention! Detected connect with word: ' + item + ' from ' + str(s_addr)
+                        print 'Замечено подключение с ключевым словом: ' + item + ' с адресса ' + str(s_addr)
 
         # ICMP Packets
         elif protocol == 1:
@@ -147,8 +148,8 @@ def parse_packet(packet):
             code = icmph[1]
             checksum = icmph[2]
 
-            print 'Protocol: ICMP ' + 'Type : ' + str(icmp_type) + \
-                  ' Code : ' + str(code) + ' Checksum : ' + str(checksum)
+            print 'Протокол: ICMP ' + 'Тип : ' + str(icmp_type) + \
+                  ' Код : ' + str(code) + ' Checksum : ' + str(checksum)
 
             h_size = eth_length + iph_length + icmph_length
             data_size = len(packet) - h_size
@@ -156,7 +157,7 @@ def parse_packet(packet):
             # get data from the packet
             data = packet[h_size:]
 
-            print 'Data : ' + data
+            print 'Данные пакета : ' + data
 
         # UDP packets
         elif protocol == 17:
@@ -173,12 +174,12 @@ def parse_packet(packet):
             checksum = udph[3]
 
             if CATCH_MODE:
-                print 'Protocol: UDP ' + 'Source Port : ' + \
-                      str(source_port) + ' Dest Port : ' + str(dest_port) + ' Length : ' + str(
+                print 'Протокол: UDP ' + 'Исходный порт : ' + \
+                      str(source_port) + ' Порт назначения : ' + str(dest_port) + ' Длинна : ' + str(
                     length) + ' Checksum : ' + str(checksum)
             else:
                 if dest_port in bad_ports:
-                    print 'Attention! Detected connect to ' + str(dest_port) + ' from ' + str(s_addr)
+                    print 'Замечено подключение на порт ' + str(dest_port) + ' с адресса ' + str(s_addr)
 
             h_size = eth_length + iph_length + udph_length
             data_size = len(packet) - h_size
@@ -186,16 +187,11 @@ def parse_packet(packet):
             data = packet[h_size:]
 
             if CATCH_MODE:
-                print 'Data : ' + data
+                print 'Данные пакета : ' + data
             else:
                 for item in bad_words_data:
                     if item in data:
-                        print 'Attention! Detected connect with word: ' + item + ' from ' + str(s_addr)
-
-
-        # some other IP packet like IGMP
-        else:
-            print 'Protocol other than TCP/UDP/ICMP'
+                        print 'Замечено подключение с ключевым словом: ' + item + ' с адресса ' + str(s_addr)
 
 
 if __name__ == "__main__":
