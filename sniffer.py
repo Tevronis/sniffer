@@ -10,6 +10,7 @@ from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
 CATCH_MODE = False
 PROMISC_MODE = False
 
+out = open('output.txt', 'w')
 
 def main(argv):
     try:
@@ -96,9 +97,11 @@ def parse_packet(packet):
         s_addr = socket.inet_ntoa(iph[8])
         d_addr = socket.inet_ntoa(iph[9])
         if CATCH_MODE:
-            print 'Версия : ' + str(version) + ' Длинна IP заголовка : ' + str(ihl) + \
+            s = 'Версия : ' + str(version) + ' Длинна IP заголовка : ' + str(ihl) + \
                   ' TTL : ' + str(ttl) + ' Протокол : ' + str(protocol) + ' Адресс отправения : ' + \
-                  str(s_addr) + ' Адресс доставки : ' + str(d_addr)
+                  str(s_addr) + ' Адресс доставки : ' + str(d_addr) + '\n'
+            out.write(s)
+            print s
 
         # TCP protocol
         if protocol == 6:
@@ -114,13 +117,17 @@ def parse_packet(packet):
             doff_reserved = tcph[4]
             tcph_length = doff_reserved >> 4
             if CATCH_MODE:
-                print 'Протокол: TCP ' + 'Исходный порт : ' + str(source_port) + ' Порт назначения : ' + str(
+                s = 'Протокол: TCP ' + 'Исходный порт : ' + str(source_port) + ' Порт назначения : ' + str(
                     dest_port) + ' Порядковый номер : ' + str(
                     sequence) + ' Подтверждение : ' + str(acknowledgement) + ' Длина TCP заголовка : ' + str(
-                    tcph_length)
+                    tcph_length) + '\n'
+                print s
+                out.write(s)
             else:
                 if dest_port in bad_ports:
-                    print 'Замечено подключение на порт ' + str(dest_port) + ' с адресса ' + str(s_addr)
+                    s = 'Замечено подключение на порт ' + str(dest_port) + ' с адресса ' + str(s_addr) + '\n'
+                    print s
+                    out.write(s)
 
             h_size = eth_length + iph_length + tcph_length * 4
             data_size = len(packet) - h_size
@@ -130,10 +137,13 @@ def parse_packet(packet):
             decode_data = EthDecoder().decode(data).get_data_as_string()
             if CATCH_MODE:
                 print decode_data
+                out.write(decode_data + '\n')
             else:
                 for item in bad_words_data:
                     if item in decode_data:
-                        print 'Замечено подключение с ключевым словом: ' + item + ' с адресса ' + str(s_addr)
+                        s = 'Замечено подключение с ключевым словом: ' + item + ' с адресса ' + str(s_addr) + '\n'
+                        print s
+                        out.write(s)
 
         # ICMP Packets
         elif protocol == 1:
@@ -141,23 +151,24 @@ def parse_packet(packet):
             icmph_length = 4
             icmp_header = packet[u:u + 4]
 
-            # now unpack them :)
             icmph = unpack('!BBH', icmp_header)
 
             icmp_type = icmph[0]
             code = icmph[1]
             checksum = icmph[2]
 
-            print 'Протокол: ICMP ' + 'Тип : ' + str(icmp_type) + \
-                  ' Код : ' + str(code) + ' Checksum : ' + str(checksum)
+            s = 'Протокол: ICMP ' + 'Тип : ' + str(icmp_type) + \
+                  ' Код : ' + str(code) + ' Checksum : ' + str(checksum) + '\n'
+            print s
 
             h_size = eth_length + iph_length + icmph_length
             data_size = len(packet) - h_size
 
             # get data from the packet
             data = packet[h_size:]
-
-            print 'Данные пакета : ' + data
+            s = 'Данные пакета : ' + data + '\n'
+            print s
+            out.write(s)
 
         # UDP packets
         elif protocol == 17:
@@ -165,7 +176,6 @@ def parse_packet(packet):
             udph_length = 8
             udp_header = packet[u:u + 8]
 
-            # now unpack them :)
             udph = unpack('!HHHH', udp_header)
 
             source_port = udph[0]
@@ -174,12 +184,16 @@ def parse_packet(packet):
             checksum = udph[3]
 
             if CATCH_MODE:
-                print 'Протокол: UDP ' + 'Исходный порт : ' + \
+                s = 'Протокол: UDP ' + 'Исходный порт : ' + \
                       str(source_port) + ' Порт назначения : ' + str(dest_port) + ' Длинна : ' + str(
-                    length) + ' Checksum : ' + str(checksum)
+                    length) + ' Checksum : ' + str(checksum) + '\n'
+                print s
+                out.write(s)
             else:
                 if dest_port in bad_ports:
-                    print 'Замечено подключение на порт ' + str(dest_port) + ' с адресса ' + str(s_addr)
+                    s = 'Замечено подключение на порт ' + str(dest_port) + ' с адресса ' + str(s_addr) + '\n'
+                    print s
+                    out.write(s)
 
             h_size = eth_length + iph_length + udph_length
             data_size = len(packet) - h_size
@@ -187,11 +201,15 @@ def parse_packet(packet):
             data = packet[h_size:]
 
             if CATCH_MODE:
-                print 'Данные пакета : ' + data
+                s = 'Данные пакета : ' + data + '\n'
+                print s
+                out.write(s)
             else:
                 for item in bad_words_data:
                     if item in data:
-                        print 'Замечено подключение с ключевым словом: ' + item + ' с адресса ' + str(s_addr)
+                        s = 'Замечено подключение с ключевым словом: ' + item + ' с адресса ' + str(s_addr) + '\n'
+                        print s
+                        out.write(s)
 
 
 if __name__ == "__main__":
